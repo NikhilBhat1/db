@@ -1,0 +1,61 @@
+-- Create query to use the ORDER BY clause to sort the customers by their last names in ascending order.
+SELECT * FROM customers ORDER BY contactLastName;
+
+-- Create a query to use the ORDER BY clause sorts the result set by the last name in descending order first and then sorts the sorted result set by the first name in ascending order to make the final result set.
+SELECT * FROM customers ORDER BY contactLastName DESC, contactFirstName ASC;
+
+-- Create a query to select unique last names by adding the DISTINCT clause.
+SELECT DISTINCT contactLastName FROM customers;
+
+-- Create a query to find customers who locate in California, USA, and have a credit limit greater than 100K.
+SELECT * FROM customers WHERE state='CA' AND country='USA' AND creditLimit > 100000;
+
+-- Create a query to find the products whose buy prices are not between $20 and $100.
+SELECT * FROM products WHERE buyPrice NOT BETWEEN 20 AND 100;
+
+-- Create a table stats to store the number of products, the number of customers, and the number of orders.
+CREATE TABLE stats (statsId INT NOT NULL PRIMARY KEY AUTO_INCREMENT, noOfProducts INT, noOfCustomers INT, noOfOrders INT);
+
+-- Create a query to update both last name and email columns of employee number 1056 to lastname=Hill, email=mary.hill@classicmodelcars.com.
+UPDATE employees SET lastname='Hill', email='mary.hill@classicmodelcars.com' WHERE employeeNumber=1056;
+
+-- Create a query to return order number, order status, and total sales from the orders and orderdetails tables using the INNER JOIN clause with the GROUP BY clause.
+SELECT orders.orderNumber AS 'order number', orders.status AS 'order status', SUM(orderdetails.priceEach * orderDetails.quantityOrdered) AS 'total sales' FROM orders INNER JOIN orderdetails ON orders.orderNumber = orderdetails.orderNumber GROUP BY orderdetails.orderNumber;
+
+-- Create a query to find customer details who had made a payment above 50,000 and the employee responsible for making the payment.
+SELECT customers.*, employees.firstname FROM customers INNER JOIN employees ON customers.salesRepEmployeeNumber = employees.employeeNumber INNER JOIN payments ON customers.customerNumber = payments.customerNumber WHERE payments.amount > 50000;
+
+-- Create a query to find the customers who have done a payment on ‘2004-09-19’.
+SELECT customers.* FROM customers INNER JOIN payments ON customers.customerNumber = payments.customerNumber WHERE payments.paymentDate='2004-09-19';
+
+-- The customer_listView provides a list of customers, with firstname and lastname concatenated together and address information combined into a single view.
+CREATE VIEW customer_list AS SELECT customerNumber, CONCAT_WS('', contactFirstName, ' ', contactLastName) AS 'Customer Number', CONCAT_WS('', addressLine1, ' ', addressLine2, ' ', city) AS Address FROM customers;
+SELECT * FROM customer_list;
+
+-- The maxSalesCustomer stored procedure: The customer who had made the max payment in a particular month.
+CREATE PROCEDURE maxSalesCustomer (IN month INT)
+SELECT customers.*, MAX(payments.amount) as Amount FROM customers INNER JOIN payments ON customers.customerNumber = payments.customerNumber WHERE MONTH(payments.paymentDate) = month GROUP BY customers.customerNumber ORDER BY Amount DESC LIMIT 1;
+CALL maxSalesCustomer(10);
+
+-- The todaysSales stored procedure: The customers who have made payments today.
+CREATE PROCEDURE todaysSales()
+SELECT customers.customerName, customers.contactFirstName, customers.contactLastName, payments.paymentDate, payments.amount FROM customers INNER JOIN payments ON customers.customerNumber = payments.customerNumber WHERE DATE(payments.paymentDate) = CURDATE() ORDER BY payments.amount DESC;
+CALL todaysSales();
+
+-- The payment_dateTrigger: The payment_date trigger sets the paymentDate column of the payment table to the current date as rows are inserted.
+CREATE TRIGGER payment_date BEFORE INSERT ON payments FOR EACH ROW SET NEW.paymentDate = CURDATE();
+
+-- The delete_orderTrigger: The delete_orderTrigger creates a table deleteorderlog if not exists and inserts the orderNumber and current date into the deleteorderlog table while deleting a row from the orders table.
+CREATE TABLE IF NOT EXISTS deleteorderlog (
+    logID INT PRIMARY KEY AUTO_INCREMENT,
+    orderNumber INT,
+    deletionDate DATE
+);
+
+DELIMITER //
+CREATE TRIGGER delete_order BEFORE DELETE ON orders FOR EACH ROW
+BEGIN
+    INSERT INTO deleteorderlog (orderNumber, deletionDate) VALUES (OLD.orderNumber, CURDATE());
+END;
+//
+DELIMITER ;
